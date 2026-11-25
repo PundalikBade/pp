@@ -315,6 +315,18 @@ def ibm_submit(N: int, shots: int = 1000) -> dict:
             "qubits": 3 * n, "two_qubit_gates": two_q, "depth": tqc.depth(), "shots": shots}
 
 
+def ibm_job_info(job_id: str, N: int) -> dict:
+    """Rebuild the details of a job sent by ibm_submit, from its id and N (a is chosen the same way)."""
+    a, r = good_base(N)
+    job = _ibm_service().job(job_id)
+    try:
+        backend = job.backend().name
+    except Exception:
+        backend = "IBM"
+    return {"job_id": job_id, "N": N, "a": a, "t": 2 * N.bit_length(), "r_expected": r, "backend": backend,
+            "qubits": 3 * N.bit_length(), "two_qubit_gates": "—"}
+
+
 def ibm_check(job_id: str, N: int, a: int, t: int) -> dict:
     """Status of an IBM job; once it is DONE, also the analysed result. Uses no QPU time."""
     job = _ibm_service().job(job_id)

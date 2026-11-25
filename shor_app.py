@@ -158,6 +158,12 @@ class Handler(BaseHTTPRequestHandler):
                 code, body = _with_ibm_key(
                     p, lambda: shor.ibm_check(str(p["job_id"]), int(p["N"]), int(p["a"]), int(p["t"])))
                 return self._send(code, body)
+            if self.path == "/api/ibm-lookup":
+                N = int(p.get("N") or 0)
+                assert 4 <= N <= MAX_N["ibm"], "Enter the N you sent with this job."
+                assert str(p.get("job_id", "")).strip(), "Enter the IBM job id."
+                code, body = _with_ibm_key(p, lambda: shor.ibm_job_info(str(p["job_id"]).strip(), N))
+                return self._send(code, body)
             if self.path == "/api/ibm-usage":
                 code, body = _with_ibm_key(p, shor.ibm_usage)
                 return self._send(code, body)
@@ -241,6 +247,9 @@ th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line)}th{font-si
   <label class="chk"><input type="checkbox" id="confirm"> Use my hardware time for this run</label></div>
  <button class="btn" id="go">Factor on IBM quantum hardware</button>
  <button class="btn ghost" id="use" type="button">Check my IBM minutes left</button>
+ <details id="lk"><summary class="hint" style="cursor:pointer">Sent a job from another device? Check it by job id</summary>
+  <div class="row" style="margin-top:8px"><div class="field"><label for="lkId">IBM job id</label><input id="lkId" placeholder="e.g. d4abc123..."></div><div class="field" style="flex:0 1 90px"><label for="lkN">N</label><input id="lkN" value="15" inputmode="numeric"></div></div>
+  <button class="btn ghost" id="lkGo" type="button" style="margin-top:8px;width:100%">Check this job</button></details>
  <div class="status" id="status" role="status"></div>
  <p class="hint">Your key is sent only with each request, to IBM or BlueQubit. It is never saved on the server or in this page.</p>
 </form>
@@ -298,7 +307,7 @@ async function checkIBM(job){clearTimeout(checkTimer);if(!key()&&!cfg.ibm_key){b
  $('status').textContent='IBM job '+job.job_id+' on '+job.backend+': '+st+' · checked '+new Date().toLocaleTimeString();
  if(st==='DONE'){busy(false);store.set(null);delete $('go').dataset.check;sync();
   if(j.factors)showFactors(job.N,j.factors.map(String));else say('No factors this time: noise hid the period. Try again or use a smaller N.','x');
-  facts([[j.r_found??'none','Period found (expected '+job.r_expected+')'],[(100*j.peak_share).toFixed(1)+'%','Shots on correct peaks (perfect: ~100%)'],[(100*j.noise_share).toFixed(1)+'%','Random noise would give'],[job.two_qubit_gates,'Two-qubit gates on '+job.backend],[j.quantum_seconds!=null?j.quantum_seconds+' s':'—','IBM time used']]);
+  facts([[j.r_found??'none','Period found (expected '+job.r_expected+')'],[(100*j.peak_share).toFixed(1)+'%','Shots on correct peaks (perfect: ~100%)'],[(100*j.noise_share).toFixed(1)+'%','Random noise would give'],[job.two_qubit_gates??'—','Two-qubit gates on '+job.backend],[j.quantum_seconds!=null?j.quantum_seconds+' s':'—','IBM time used']]);
   bars(j.top,job.N,job.a,job.t);return}
  if(st==='ERROR'||st==='CANCELLED'){busy(false);store.set(null);say('IBM reported '+st+(j.error?': '+j.error:''),'x');return}
  checkTimer=setTimeout(()=>checkIBM(job),window.__fast?500:20000)}
@@ -314,6 +323,10 @@ $('f').onsubmit=async ev=>{ev.preventDefault();
  pollLocal(j.id,s=>{busy(false);$('status').textContent='Finished in '+s.elapsed+' s';if(s.status==='done'){showFactors(body.N,s.factors);
   if(s.counts){const top=Object.entries(s.counts).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([b,c])=>[b,parseInt(b,2),c]);const m=s.log.match(/a = (\d+)/g);const a=m?+m[m.length-1].split('= ')[1]:0;if(a)bars(top,+body.N,a,top[0][0].length)}}
   else say('Failed: '+s.error,'x')})};
+$('lkGo').onclick=async()=>{if(!key()&&!cfg.ibm_key){$('status').textContent='Paste your IBM API key first.';return}
+ $('status').textContent='Looking up the job…';const {ok,j}=await post('/api/ibm-lookup',{job_id:$('lkId').value.trim(),N:$('lkN').value.trim(),ibm_token:key()});
+ if(!ok){$('status').textContent='Could not find the job: '+j.error;return}
+ store.set(j);$('N').value=j.N;delete $('go').dataset.check;busy(true);$('log').textContent='';$('chart').hidden=true;say('Checking IBM job for N = '+j.N+'…');facts([[j.backend,'IBM chip'],[j.job_id,'IBM job id']]);steps(1);checkIBM(j)};
 $('use').onclick=async()=>{$('status').textContent='Checking…';const {ok,j}=await post('/api/ibm-usage',{ibm_token:key()});
  if(!ok){$('status').textContent='Could not read your IBM usage: '+j.error;return}
  const lim=j.usage_limit_seconds??j.usage_allocation_seconds,used=j.usage_consumed_seconds??0,left=j.usage_remaining_seconds??(lim!=null?lim-used:null);
