@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: shor-lab
+    runtime: docker
+    plan: free
+    envVars:
+      - key: SHOR_PUBLIC
+        value: "1"

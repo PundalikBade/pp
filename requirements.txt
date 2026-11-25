@@ -1,0 +1,6 @@
+qiskit==2.6.2
+qiskit-aer==0.18.4
+qiskit-ibm-runtime==0.52.1
+bluequbit==0.19.1b1
+python-dateutil~=2.8
+numpy
