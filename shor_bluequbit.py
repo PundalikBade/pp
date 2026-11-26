@@ -231,10 +231,11 @@ def _ibm_service():
 
 
 def ibm_usage() -> dict:
-    """Seconds used / left on your IBM instance this month. Uses no QPU time."""
+    """Resource units (or seconds) used and left on your IBM instance this month. Uses no QPU time."""
     u = _ibm_service().usage()
-    return {k: u.get(k) for k in ("usage_consumed_seconds", "usage_limit_seconds",
-                                  "usage_allocation_seconds", "usage_remaining_seconds", "usage_period")}
+    keys = ("usage_consumed_seconds", "usage_limit_seconds", "usage_allocation_seconds", "usage_remaining_seconds",
+            "usage_consumed_ru", "usage_limit_ru", "usage_allocation_ru", "usage_remaining_ru", "usage_period")
+    return {k: u.get(k) for k in keys if u.get(k) is not None}
 
 
 def good_base(N: int):

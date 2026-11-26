@@ -243,10 +243,10 @@ th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line)}th{font-si
  <div class="field" id="ibmk"><label for="ibm_token">IBM Quantum API key</label><input id="ibm_token" type="password" placeholder="Paste your IBM API key"></div>
  <div class="field" id="bqk" hidden><label for="bq_token">BlueQubit API token</label><input id="bq_token" type="password" placeholder="Paste your BlueQubit token"></div>
  <div class="row"><div class="field"><label for="shots">Shots</label><input id="shots" value="1000" inputmode="numeric"></div><div class="field" id="af"><label for="a">Base a</label><input id="a" placeholder="auto" inputmode="numeric"></div></div>
- <div class="warn" id="hw"><b>Real quantum hardware</b><span>Sends one job. It uses a few seconds of your free IBM minutes and can wait in IBM's queue for minutes or hours. You can close this page and come back: the job is remembered on this device.</span>
+ <div class="warn" id="hw"><b>Real quantum hardware</b><span>Sends one job. It uses a small part of your free IBM time (resource units) and can wait in IBM's queue for minutes or hours. You can close this page and come back: the job is remembered on this device.</span>
   <label class="chk"><input type="checkbox" id="confirm"> Use my hardware time for this run</label></div>
  <button class="btn" id="go">Factor on IBM quantum hardware</button>
- <button class="btn ghost" id="use" type="button">Check my IBM minutes left</button>
+ <button class="btn ghost" id="use" type="button">Check my IBM time left</button>
  <details id="lk"><summary class="hint" style="cursor:pointer">Sent a job from another device? Check it by job id</summary>
   <div class="row" style="margin-top:8px"><div class="field"><label for="lkId">IBM job id</label><input id="lkId" placeholder="e.g. d4abc123..."></div><div class="field" style="flex:0 1 90px"><label for="lkN">N</label><input id="lkN" value="15" inputmode="numeric"></div></div>
   <button class="btn ghost" id="lkGo" type="button" style="margin-top:8px;width:100%">Check this job</button></details>
@@ -329,6 +329,9 @@ $('lkGo').onclick=async()=>{if(!key()&&!cfg.ibm_key){$('status').textContent='Pa
  store.set(j);$('N').value=j.N;delete $('go').dataset.check;busy(true);$('log').textContent='';$('chart').hidden=true;say('Checking IBM job for N = '+j.N+'…');facts([[j.backend,'IBM chip'],[j.job_id,'IBM job id']]);steps(1);checkIBM(j)};
 $('use').onclick=async()=>{$('status').textContent='Checking…';const {ok,j}=await post('/api/ibm-usage',{ibm_token:key()});
  if(!ok){$('status').textContent='Could not read your IBM usage: '+j.error;return}
+ const fmt=v=>Math.round(v*100)/100;const ruLim=j.usage_limit_ru??j.usage_allocation_ru;
+ if(ruLim!=null||j.usage_consumed_ru!=null){const used=j.usage_consumed_ru??0,left=j.usage_remaining_ru??(ruLim!=null?ruLim-used:null);
+  $('status').textContent='IBM used: '+fmt(used)+' RU'+(ruLim!=null?' of '+fmt(ruLim)+' RU · left: '+fmt(left)+' RU ('+Math.round(100*left/ruLim)+'%)':'');return}
  const lim=j.usage_limit_seconds??j.usage_allocation_seconds,used=j.usage_consumed_seconds??0,left=j.usage_remaining_seconds??(lim!=null?lim-used:null);
  $('status').textContent='IBM time used: '+used+' s'+(lim!=null?' of '+lim+' s · left: '+left+' s ('+(left/60).toFixed(1)+' min)':'')};
 $('bGo').onclick=async()=>{$('bGo').disabled=true;const body={ibm_token:key(),Ns:$('bNs').value,device:$('bDev').value,confirm:$('bConf').checked};
